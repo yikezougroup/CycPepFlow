@@ -6,6 +6,37 @@ This private pre-release contains the inference and evaluation code, exact CREMP
 
 > **Release scope.** This repository reproduces checkpoint inference and the reported held-out-test metrics. The training entry point (`train.py`) is intentionally **not distributed**, and optimizer/scheduler/trainer state has been removed from the release checkpoints. These checkpoints cannot be used to resume training.
 
+## Inference-only core
+
+The runtime is a plain PyTorch `nn.Module`: checkpoint loading, molecular
+featurization, the equivariant velocity network, prior sampling, and integration.
+Training hooks, losses, optimizers, schedulers, upstream QM9/DRUGS downloaders,
+xTB wrappers, and the duplicate generic sampler/evaluator are not included.
+Lightning, TorchMetrics, Pydantic, and fsspec are no longer direct dependencies.
+The released `.ckpt` files still use their original Lightning **container format**;
+the loader reads their `state_dict` with restricted PyTorch loading, without
+requiring Lightning.
+
+- Supported model entry points: `BaseFlow.from_config`, `forward`, `sample`,
+  and standard PyTorch `load_state_dict` / `to` / `eval`.
+- Use `scripts/generate_cremp.py` for batched inference and `scripts/score_covmat.py`
+  for the canonical scorer. The old `from_default`, `predict`, `batched_sampling`,
+  and `CovMatEvaluator` convenience APIs were unused by the released workflow
+  and have been removed; this is an intentional Python-API reduction.
+- Original YAMLs remain unchanged. Their archived training arguments are
+  accepted as inert metadata; unknown arguments still raise an error.
+- Covalent hop edges and APG shortest-path distances are built once per sampling
+  call. Radius/nonbonded edges are still rebuilt at every integration step.
+  Precomputed topology stays local to that call, not in a cross-molecule cache.
+- Each processed record is parsed once. Its reference conformer is constructed
+  from that record's coordinates, never cached solely by SMILES.
+
+Run the regression suite with `python -m pytest tests -q` (requires `pytest`).
+The architecture, checkpoint tensors, atom encodings, sampler math, and scoring
+definitions are retained. Unused registry entries are not inferred from static
+name counts: configuration-selected activations/RBFs and PyG dispatch methods
+remain supported.
+
 ## Released variants
 
 All variants use 20 local equivariant-attention layers, scalar gated global attention in every layer, covalent + exact 2-hop + exact 3-hop + dynamic nonbonded radius edges, ProductLite residuals at layers 5/10/15/20, formal-charge and chirality conditioning, and signed-volume chirality loss during training. APG adds a head-specific all-pairs shortest-path bias to global attention.

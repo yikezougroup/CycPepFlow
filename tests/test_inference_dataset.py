@@ -102,6 +102,30 @@ class ProcessedConformerDatasetTest(unittest.TestCase):
             )
             self.assertIsInstance(trusted_dataset.load_record(0), Data)
 
+    def test_repeated_smiles_keep_each_records_reference_conformer(self) -> None:
+        first = _safe_record("N[C@@H](C)C(=O)O", conformer_count=1)
+        second = dict(first, pos=first["pos"] + 2.0)
+        with tempfile.TemporaryDirectory() as temporary_dir:
+            _write_record(temporary_dir, first, "000000_first.pt")
+            _write_record(temporary_dir, second, "000001_second.pt")
+            dataset = ProcessedConformerDataset(temporary_dir, "tiny")
+            dataset[0]
+            sample, references = dataset.get_with_references(1)
+            actual = torch.as_tensor(sample.mol.GetConformer().GetPositions()).float()
+            self.assertTrue(torch.equal(actual, references[0]))
+
+    def test_record_parses_smiles_once(self) -> None:
+        from unittest.mock import patch
+        import datamol as dm
+
+        record = _safe_record("N[C@@H](C)C(=O)O")
+        with tempfile.TemporaryDirectory() as temporary_dir:
+            _write_record(temporary_dir, record)
+            dataset = ProcessedConformerDataset(temporary_dir, "tiny")
+            with patch.object(dm, "to_mol", wraps=dm.to_mol) as parse:
+                dataset[0]
+            self.assertEqual(parse.call_count, 1)
+
     def test_rejects_missing_split(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_dir:
             with self.assertRaises(FileNotFoundError):

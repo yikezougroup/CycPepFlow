@@ -788,6 +788,7 @@ class TorchMD_ET_dynamics(nn.Module):
         edge_index: Optional[Tensor] = None,
         node_attr: Optional[Tensor] = None,
         edge_attr: Optional[Tensor] = None,
+        geodesic_distance: Optional[Tensor] = None,
     ) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
         # embed atomic numbers using an embedding layer
         if z.dim() > 1:
@@ -802,8 +803,7 @@ class TorchMD_ET_dynamics(nn.Module):
 
         # Compute the static all-pair covalent graph distance once, before the
         # runtime scalar edge type is concatenated with radial features.
-        geodesic_distance = None
-        if self.global_geodesic_bias:
+        if self.global_geodesic_bias and geodesic_distance is None:
             if edge_attr is None:
                 raise ValueError("global_geodesic_bias requires scalar runtime edge types")
             geodesic_distance = all_pair_graph_geodesic(
@@ -904,8 +904,8 @@ class TorchMD_ET_dynamics(nn.Module):
 
 
 class TorchMDDynamics(nn.Module):
-    """
-    TorchMDDynamics Model for DDPM training.
+    r"""
+    TorchMDDynamics velocity network for flow-matching inference.
 
     Parameters
     ----------
@@ -1037,6 +1037,7 @@ class TorchMDDynamics(nn.Module):
         batch: Tensor,
         edge_attr: Optional[Tensor] = None,
         node_attr: Optional[Tensor] = None,
+        geodesic_distance: Optional[Tensor] = None,
     ) -> Tuple[Tensor, Optional[Tensor]]:
         """Forward pass over torchmd-net model.
 
@@ -1068,6 +1069,7 @@ class TorchMDDynamics(nn.Module):
             node_attr=node_attr,
             edge_index=edge_index,
             edge_attr=edge_attr,
+            geodesic_distance=geodesic_distance,
         )
 
         # latent representation

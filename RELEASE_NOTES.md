@@ -1,5 +1,22 @@
 # CycPepFlow v0.1.1 — private checkpoint release
 
+## Unreleased — inference-core cleanup
+
+- Replaced the training-framework base with a checkpoint-compatible plain PyTorch model.
+- Removed unused training, upstream-download, xTB, duplicate sampling/scoring,
+  obsolete I/O, and unused output-head/distance code.
+- Removed direct Lightning, TorchMetrics, Pydantic, and fsspec requirements.
+- Reused static hop/APG topology during integration while preserving dynamic radius edges.
+- Consolidated record featurization to one SMILES parse and fixed stale reference
+  conformers when distinct records share the same SMILES.
+- Preserved original configuration files, checkpoint assets, scientific scoring,
+  Apache license, and the required upstream MIT attribution.
+- Reduced the Python API to the documented inference workflow; see README migration notes.
+
+The published v0.1.1 assets and tag are not changed by this unreleased cleanup.
+
+## Published v0.1.1
+
 This private pre-release contains the four validation-selected checkpoints used in the CycPepFlow paper:
 
 - CycPepFlow-B

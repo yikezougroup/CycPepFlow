@@ -21,19 +21,15 @@ classifiers = [
 ]
 dependencies = [
   "datamol>=0.12,<0.13",
-  "fsspec>=2024",
-  "lightning>=2.4,<2.7",
   "loguru>=0.7,<0.8",
   "numpy==1.26.4",
   "pandas>=2.2,<3.1",
-  "pydantic>=2,<3",
   "pyyaml>=6,<7",
   "rdkit>=2024.3",
   "scipy>=1.13",
   "torch>=2.4,<2.5",
   "torch-cluster>=1.6,<1.7",
   "torch-geometric>=2.6,<2.7",
-  "torchmetrics>=1.4,<2",
   "tqdm>=4.66",
 ]
 

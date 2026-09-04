@@ -1,36 +1,56 @@
-from typing import Any, Dict, List, Optional, TypeVar
+from os import PathLike
+from typing import Any, Dict, List, Optional
 
-import numpy as np
 import torch
-from pytorch_lightning import seed_everything
 from torch import Tensor
-from torch_geometric.data import Batch
 
-from cycpepflow.commons.configs import CONFIG_DICT
-from cycpepflow.commons.covmat import set_multiple_rdmol_positions
-from cycpepflow.commons.featurization import MoleculeFeaturizer, get_mol_from_smiles
 from cycpepflow.commons.utils import signed_volume
-from cycpepflow.models.base import BaseModel
-from cycpepflow.models.loss import batchwise_l2_loss, stp_chirality_loss
+from cycpepflow.models import utils as flow_utils
 from cycpepflow.models.utils import (
     HarmonicSampler,
     center_of_mass,
     extend_bond_index,
-    rmsd_align,
     unsqueeze_like,
 )
 from cycpepflow.networks.torchmd_net import TorchMDDynamics
+from cycpepflow.networks.torchmd_net import model_dynamics
 
 __all__ = ["BaseFlow"]
 
-Config = TypeVar("Config", str, Dict[str, Any])
+Config = str | PathLike[str] | Dict[str, Any]
+
+# Archived optimizer/scheduler options remain valid config metadata. They do not
+# construct training objects or affect network initialization or sampling.
+_ARCHIVED_TRAINING_OPTIONS = frozenset(
+    {
+        'optimizer_type',
+        'lr',
+        'beta1',
+        'beta2',
+        'weight_decay',
+        'ams_grad',
+        'grad_norm_max_val',
+        'lr_scheduler_type',
+        'factor',
+        'patience',
+        'first_cycle_steps',
+        'cycle_mult',
+        'max_lr',
+        'min_lr',
+        'warmup_steps',
+        'gamma',
+        'last_epoch',
+        'lr_scheduler_monitor',
+        'lr_scheduler_interval',
+        'lr_scheduler_frequency',
+    }
+)
 
 
-class BaseFlow(BaseModel):
-    """LightningModule for Flow Matching"""
+class BaseFlow(torch.nn.Module):
+    """Checkpoint-compatible flow-matching inference model."""
 
     __prior_types__ = ["gaussian", "harmonic"]
-    __interpolation_types__ = ["linear", "gvp", "gvp_w_sigma", "gvp_squared"]
 
     def __init__(
         self,
@@ -68,7 +88,8 @@ class BaseFlow(BaseModel):
         mace_product_lite: bool = False,
         mace_product_lite_every_n_layers: int = 5,
         mace_product_lite_residual_scale: float = 1.0,
-        # flow matching args
+        # Flow/prior options. Training-only path/loss values are accepted below
+        # for archived configuration compatibility, without being stored or used.
         sigma: float = 0.1,
         prior_type: str = "gaussian",
         sample_time_dist: str = "uniform",
@@ -84,7 +105,11 @@ class BaseFlow(BaseModel):
         edge_one_hot_types: int = 5,
         **kwargs,
     ):
-        super().__init__(**kwargs)
+        unknown_options = set(kwargs) - _ARCHIVED_TRAINING_OPTIONS
+        if unknown_options:
+            names = ", ".join(sorted(unknown_options))
+            raise TypeError(f"Unexpected model option(s): {names}")
+        super().__init__()
         # setup network
         if network_type == "TorchMDDynamics":
             self.network = TorchMDDynamics(
@@ -122,20 +147,13 @@ class BaseFlow(BaseModel):
         else:
             raise NotImplementedError(f"Network {network_type} not implemented.")
 
-        self.sigma = sigma
         self.cutoff = cutoff_upper
         self.parity_switch = parity_switch
-        self.chirality_loss_weight = float(chirality_loss_weight)
-        self.chirality_loss_scale = float(chirality_loss_scale)
-        self.chirality_loss_eps = float(chirality_loss_eps)
-        self.chirality_warmup_steps = int(chirality_warmup_steps)
-        self.chirality_ramp_steps = int(chirality_ramp_steps)
         self.prior_type = prior_type
-        self.sample_time_dist = sample_time_dist
         self.edge_one_hot = edge_one_hot
         self.edge_one_hot_types = edge_one_hot_types
         self.max_num_neighbors = max_num_neighbors
-        # Inference-only network AMP. Default keeps training/inference bitwise as before;
+        # Inference-only network AMP. Default keeps FP32 inference unchanged;
         # generation scripts may set this to "fp16" or "bf16" to autocast only
         # the TorchMD network forward and cast the velocity back to fp32.
         self.network_amp = "none"
@@ -153,115 +171,22 @@ class BaseFlow(BaseModel):
         if prior_type == "harmonic":
             self.harmonic_sampler = HarmonicSampler(alpha=harmonic_alpha)
 
-    def chirality_weight_now(self) -> float:
-        """Current curriculum weight for the differentiable STP chirality loss.
-
-        Defaults keep historical behavior: with zero warmup/ramp, the returned
-        weight is exactly ``chirality_loss_weight`` from step 0.
-        """
-        base_weight = float(self.chirality_loss_weight)
-        if base_weight <= 0.0:
-            return 0.0
-        warmup_steps = max(0, int(getattr(self, "chirality_warmup_steps", 0)))
-        ramp_steps = max(0, int(getattr(self, "chirality_ramp_steps", 0)))
-        step = int(getattr(self, "global_step", 0))
-        if step < warmup_steps:
-            return 0.0
-        if ramp_steps <= 0:
-            return base_weight
-        ramp = min(1.0, (step - warmup_steps) / float(ramp_steps))
-        return base_weight * ramp
+    @property
+    def device(self) -> torch.device:
+        """Device of the model parameters, including after ``to``/``cpu``/``cuda``."""
+        return next(self.parameters()).device
 
     @classmethod
     def from_config(cls, cfg: Config):
+        """Construct from a release config dictionary or a YAML filesystem path."""
         import yaml
 
-        if isinstance(cfg, str):
-            cfg = yaml.safe_load(open(cfg))
-        if isinstance(cfg, dict):
-            return cls(**cfg["model_args"])
-        else:
+        if isinstance(cfg, (str, PathLike)):
+            with open(cfg) as handle:
+                cfg = yaml.safe_load(handle)
+        if not isinstance(cfg, dict):
             raise ValueError("cfg should be a dictionary or a path to a yaml file")
-
-    @classmethod
-    def from_default(
-        cls,
-        model: str = "drugs-o3",
-        device: str | torch.DeviceObjType = "cuda",
-        cache: Optional[str] = None,
-    ):
-        model = model.lower()
-        if model not in CONFIG_DICT:
-            raise ValueError(
-                f"Model config {model} not found. Available checkpoints are {CONFIG_DICT.keys()}"
-            )
-        else:
-            config = CONFIG_DICT.get(model, None)()
-            print(f"Loading {model} from config")
-            config.checkpoint_config.set_cache(cache)
-            checkpoint_path = config.checkpoint_config.fetch_checkpoint().local_path
-
-        found_device = get_device()
-        if isinstance(device, str):
-            device = torch.device(device)
-        if device != found_device and device != torch.device("cpu"):
-            print(f"Device {device} not found. Using {found_device} instead")
-            device = found_device
-
-        model = cls.from_config(config.model_dict())
-        checkpoint = torch.load(checkpoint_path, map_location=device)
-        if isinstance(checkpoint, dict):
-            if "state_dict" in checkpoint:
-                # Standard Lightning checkpoint
-                model.load_state_dict(checkpoint["state_dict"])
-            else:
-                # Plain state dict
-                model.load_state_dict(checkpoint)
-        model.eval()
-        return model
-
-    def sigma_t(self, t):
-        return self.sigma * torch.sqrt(t * (1 - t))
-
-    def sigma_dot_t(self, t):
-        return self.sigma * 0.5 * (1 - 2 * t) / torch.sqrt(t * (1 - t))
-
-    def sample_conditional_pt(self, x0: Tensor, x1: Tensor, t: Tensor, batch: Tensor):
-        # Have this here in case sample_conditional_pt
-        # is used outside of compute_conditional_vector_field
-        # center both x0 and pos (x1: data distribution)
-        x0 = center_of_mass(x0, batch=batch)
-        x1 = center_of_mass(x1, batch=batch)
-
-        # unsqueeze t and then reshape to number of atoms
-        t = t[batch] if batch is not None else t
-        t = unsqueeze_like(t, target=x0)
-
-        # linear interpolation between x0 and x1
-        # mu_t = self.interpolation_fn(x0, x1, t)
-        eps = torch.randn_like(x1)
-
-        # center each around center of mass
-        eps = center_of_mass(eps, batch=batch)
-        mu_t = t * x1 + (1 - t) * x0
-
-        # no noise at t = 0 or t = 1
-        x_t = mu_t + self.sigma_t(t) * eps
-
-        return x_t, eps
-
-    def compute_conditional_vector_field(self, x0, x1, t, batch=None):
-        if batch is None:
-            batch = torch.zeros((x1.size(0),)).to(self.device)
-
-        # sample a gaussian centered around the interpolation of x1, x0
-        x_t, eps = self.sample_conditional_pt(x0, x1, t, batch=batch)
-        t = unsqueeze_like(t[batch], x1)
-
-        # derivative of interpolate plus derivative of sigma function * noise
-        u_t = x1 - x0 + self.sigma_dot_t(t) * eps
-
-        return x_t, u_t
+        return cls(**cfg["model_args"])
 
     def switch_parity_of_pos(
         self, pos, chiral_index, chiral_nbr_index, chiral_tag, batch
@@ -308,25 +233,6 @@ class BaseFlow(BaseModel):
         # gaussian prior if not harmonic
         return torch.randn(size=size, device=self.device)
 
-    def sample_time(
-        self,
-        num_samples: int,
-        low: float = 1e-4,
-        high: float = 0.9999,
-        stage: str = "train",
-    ):
-        """Sample flow-matching time steps for training or validation"""
-        if self.sample_time_dist == "uniform" or stage == "val":
-            return torch.zeros(size=(num_samples, 1), device=self.device).uniform_(
-                low, high
-            )
-        elif self.sample_time_dist == "logit_norm":
-            return torch.sigmoid(torch.randn(size=(num_samples, 1), device=self.device))
-
-        raise NotImplementedError(
-            f"Time sampling with {self.sample_time_dist} not implemented"
-        )
-
     def forward(
         self,
         z: Tensor,
@@ -336,6 +242,8 @@ class BaseFlow(BaseModel):
         edge_attr: Optional[Tensor] = None,
         node_attr: Optional[Tensor] = None,
         batch: Optional[Tensor] = None,
+        topology: Optional[tuple[Tensor, Tensor]] = None,
+        geodesic_distance: Optional[Tensor] = None,
     ):
         # center the positions at 0
         pos = center_of_mass(pos, batch=batch)
@@ -351,6 +259,7 @@ class BaseFlow(BaseModel):
             one_hot_types=self.edge_one_hot_types,
             cutoff=self.cutoff,
             max_num_neighbors=self.max_num_neighbors,
+            topology=topology,
         )
 
         # compute energy and score from network
@@ -362,6 +271,7 @@ class BaseFlow(BaseModel):
             edge_attr=edge_type,
             node_attr=node_attr,
             batch=batch,
+            geodesic_distance=geodesic_distance,
         )
         network_amp = getattr(self, "network_amp", "none")
         if network_amp in (None, "", "none") or pos.device.type != "cuda":
@@ -379,82 +289,6 @@ class BaseFlow(BaseModel):
             v_t = v_t.float()
 
         return v_t
-
-    def generic_step(self, batched_data, batch_idx: int, stage: str):
-        # atomic numbers
-        z, pos, bond_index, node_attr, edge_attr, batch = (
-            batched_data["atomic_numbers"],
-            batched_data["pos"],
-            batched_data["edge_index"],
-            batched_data.get("node_attr", None),  # optional
-            batched_data.get("edge_attr", None),  # optional
-            batched_data.get("batch", None),  # optional
-        )
-        chiral_index = batched_data.get("chiral_index", None)
-        chiral_nbr_index = batched_data.get("chiral_nbr_index", None)
-        batch_size = batch.max().item() + 1 if batch is not None else 1
-
-        # sample base distribution, either from harmonic or gaussian
-        # x0 is sampling distribution and not data distribution
-        x0 = self.sample_base_dist(
-            pos.shape,
-            edge_index=bond_index,
-            batch=batch,
-            smiles=batched_data.get("smiles", None),
-        )
-
-        # sample time steps equal to number of molecules in a batch
-        t = self.sample_time(num_samples=batch_size, stage=stage)
-
-        if self.prior_type == "harmonic":
-            x0 = rmsd_align(pos=x0, ref_pos=pos, batch=batch)
-
-        # sample conditional vector field for positions
-        x_t, u_t = self.compute_conditional_vector_field(
-            x0=x0, x1=pos, t=t, batch=batch
-        )
-
-        # run flow matching network
-        v_t = self(
-            z=z,
-            t=t,
-            pos=x_t,
-            bond_index=bond_index,
-            edge_attr=edge_attr,
-            node_attr=node_attr,
-            batch=batch,
-        )
-
-        # regress against vector field
-        flow_loss = batchwise_l2_loss(v_t, u_t, batch=batch, reduce="mean")
-        loss = flow_loss
-
-        w_chiral = self.chirality_weight_now()
-        if self.chirality_loss_weight > 0:
-            t_atom = unsqueeze_like(t[batch], x_t)
-            x1_pred = x_t + (1 - t_atom) * v_t
-            chirality_loss = stp_chirality_loss(
-                x1_pred,
-                pos,
-                chiral_index,
-                chiral_nbr_index,
-                scale=self.chirality_loss_scale,
-                eps=self.chirality_loss_eps,
-            )
-            loss = flow_loss + w_chiral * chirality_loss
-            self.log_helper(f"{stage}/chirality_loss", chirality_loss, batch_size=batch_size)
-            self.log_helper(
-                f"{stage}/chirality_loss_weight", torch.as_tensor(w_chiral, device=self.device), batch_size=batch_size
-            )
-
-        if torch.isnan(loss):
-            raise ValueError("Loss is NaN, fix bug")
-
-        # log loss
-        self.log_helper(f"{stage}/flow_matching_loss", flow_loss, batch_size=batch_size)
-        self.log_helper(f"{stage}/loss", loss, batch_size=batch_size)
-
-        return loss
 
     def _compute_delta_t(self, t_schedule: Tensor, t: Tensor):
         if t + 1 >= t_schedule.size(0):
@@ -504,6 +338,19 @@ class BaseFlow(BaseModel):
         )
         gamma = torch.tensor(s_churn / n_timesteps).to(self.device)
 
+        # Covalent topology is constant during integration; radius edges are not.
+        # Keep this state local so another molecule/device cannot reuse stale data.
+        topology = flow_utils._topological_hop_edges(
+            bond_index, batch, z.size(0), self.device,
+        )
+        representation = self.network.representation_model
+        geodesic_distance = None
+        if representation.global_geodesic_bias:
+            geodesic_distance = model_dynamics.all_pair_graph_geodesic(
+                topology[0], topology[1], batch, z.size(0),
+                representation.global_geodesic_max_distance,
+            )
+
         n = t_schedule.size(0) - 1
         for i in range(n):
             t = t_schedule[i].repeat(x.size(0))
@@ -511,9 +358,9 @@ class BaseFlow(BaseModel):
             delta_t = self._compute_delta_t(t_schedule, t=i)
 
             # We do ODE when t is outside of [s_min, s_max]
-            if (
+            if sampler_type == "ode" or (
                 t_schedule[i] < t_min or t_schedule[i] >= t_max
-            ) or sampler_type == "ode":
+            ):
                 v_t = self(
                     z=z,
                     t=t,
@@ -522,6 +369,8 @@ class BaseFlow(BaseModel):
                     edge_attr=edge_attr,
                     node_attr=node_attr,
                     batch=batch,
+                    topology=topology,
+                    geodesic_distance=geodesic_distance,
                 )
                 x = x + delta_t * v_t
 
@@ -553,6 +402,8 @@ class BaseFlow(BaseModel):
                     edge_attr=edge_attr,
                     node_attr=node_attr,
                     batch=batch,
+                    topology=topology,
+                    geodesic_distance=geodesic_distance,
                 )
                 # update step
                 x = x_prev + v_t_prev * (delta_t + delta_hat)
@@ -563,123 +414,3 @@ class BaseFlow(BaseModel):
             )
 
         return x
-
-    @torch.no_grad()
-    def predict(
-        self,
-        smiles: List[str],
-        max_batch_size: int = 1,
-        num_samples: int = 1,
-        n_timesteps: int = 50,
-        seed: int = 42,
-        device: str = "cpu",
-        s_churn: float = 1.0,
-        t_min: float = 1.0,
-        t_max: float = 1.0,
-        std: float = 1.0,
-        sampler_type: str = "ode",
-        as_mol: bool = False,
-    ):
-        if seed is not None:
-            seed_everything(seed)
-
-        def sample(
-            data,
-            max_batch_size,
-            num_samples,
-            n_timesteps,
-            device,
-            s_churn,
-            t_min,
-            t_max,
-            std,
-            sampler_type,
-        ):
-            sampled_pos = []
-
-            for batch_start in range(0, num_samples, max_batch_size):
-                # get batch_size
-                batch_size = min(max_batch_size, num_samples - batch_start)
-                # batch the data
-                batched_data = Batch.from_data_list([data] * batch_size)
-
-                # get one_hot, edge_index, batch
-                (
-                    z,
-                    edge_index,
-                    batch,
-                    node_attr,
-                    chiral_index,
-                    chiral_nbr_index,
-                    chiral_tag,
-                ) = (
-                    batched_data["atomic_numbers"].to(device),
-                    batched_data["edge_index"].to(device),
-                    batched_data["batch"].to(device),
-                    batched_data["node_attr"].to(device),
-                    batched_data["chiral_index"].to(device),
-                    batched_data["chiral_nbr_index"].to(device),
-                    batched_data["chiral_tag"].to(device),
-                )
-
-                with torch.no_grad():
-                    pos = self.sample(
-                        z=z,
-                        bond_index=edge_index,
-                        batch=batch,
-                        node_attr=node_attr,
-                        n_timesteps=n_timesteps,
-                        chiral_index=chiral_index,
-                        chiral_nbr_index=chiral_nbr_index,
-                        chiral_tag=chiral_tag,
-                        s_churn=s_churn,
-                        t_min=t_min,
-                        t_max=t_max,
-                        std=std,
-                        sampler_type=sampler_type,
-                        smiles=[data.smiles] * batch_size if hasattr(data, "smiles") else None,
-                    )
-
-                # reshape to (num_samples, num_atoms, 3) using batch
-                pos = pos.view(batch_size, -1, 3).cpu().detach().numpy()
-
-                # append to generated_positions
-                sampled_pos.append(pos)
-
-            # concatenate generated_positions
-            sampled_pos = np.concatenate(
-                sampled_pos, axis=0
-            )  # (num_samples, num_atoms, 3)
-
-            return sampled_pos
-
-        feat = MoleculeFeaturizer()
-        if not isinstance(smiles, list):
-            smiles = [smiles]
-
-        data = {}
-        for smile in smiles:
-            pos = sample(
-                feat.get_data_from_smiles(
-                    smile,
-                ),
-                max_batch_size,
-                num_samples,
-                n_timesteps,
-                device,
-                s_churn,
-                t_min,
-                t_max,
-                std,
-                sampler_type,
-            )
-            if as_mol:
-                mol = get_mol_from_smiles(smile)
-                data[smile] = set_multiple_rdmol_positions(mol, pos)
-            else:
-                data[smile] = pos
-        return data
-
-
-def get_device():
-    return torch.device("cuda" if torch.cuda.is_available() else "cpu")

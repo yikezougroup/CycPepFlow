@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""6-mer filtered CREMP COV/MAT scorer with one persistent global process pool.
+"""Length-filtered CREMP COV/MAT scorer with one persistent global process pool.
 
-This preserves the released COV/MAT protocol (RDKit GetBestRMS, ratio=2) while avoiding
-CovMatEvaluator's per-molecule Pool spawn/teardown.  It is robust to both dict-style
-packed records and PyG Data objects.
+Preserves the released COV/MAT protocol (RDKit GetBestRMS, ratio=2) without
+per-molecule pool creation. Accepts both dict-style records and PyG Data objects.
 """
 from __future__ import annotations
 

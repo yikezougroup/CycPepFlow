@@ -10,11 +10,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+import datamol as dm
 import torch
 from torch import Tensor
 from torch_geometric.data import Data
 
 from cycpepflow.commons.featurization import MoleculeFeaturizer
+from cycpepflow.commons.covmat import build_conformer
 
 
 def _get_field(record: Any, name: str) -> Any:
@@ -118,29 +120,17 @@ class ProcessedConformerDataset:
         record = self.load_record(index)
         smiles, positions, atomic_numbers = self._normalize_record(record, index)
 
-        resolved_atomic_numbers = self.featurizer.get_atomic_numbers(smiles).to(torch.long)
-        if not torch.equal(resolved_atomic_numbers, atomic_numbers):
+        mol = dm.to_mol(smiles, remove_hs=False, ordered=True)
+        graph = self.featurizer.get_data_from_mol(mol, smiles)
+        if not torch.equal(graph.atomic_numbers.to(torch.long), atomic_numbers):
             raise ValueError(
                 f"{self.data_files[index]} atomic numbers do not match reconstructed SMILES order"
             )
 
-        node_attr = self.featurizer.get_atom_features(smiles)
-        chiral_index, chiral_nbr_index, chiral_tag = self.featurizer.get_chiral_centers(smiles)
-        edge_index, edge_attr = self.featurizer.get_edge_index(smiles, False)
-        mol = self.featurizer.get_mol_with_conformer(smiles, positions[0])
-
-        graph = Data(
-            pos=positions[0],
-            atomic_numbers=atomic_numbers,
-            smiles=smiles,
-            edge_index=edge_index,
-            edge_attr=edge_attr,
-            chiral_index=chiral_index,
-            chiral_nbr_index=chiral_nbr_index,
-            chiral_tag=chiral_tag,
-            node_attr=node_attr,
-            mol=mol,
-        )
+        mol.AddConformer(build_conformer(positions[0]))
+        graph.pos = positions[0]
+        graph.atomic_numbers = atomic_numbers
+        graph.mol = mol
         return graph, positions
 
     def __getitem__(self, index: int) -> Data:
