@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cycpepflow"
+version = "0.1.0"
+description = "CycPepFlow inference and benchmark reproduction package"
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+license = { file = "LICENSE" }
+authors = [{ name = "CycPepFlow authors" }]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Scientific/Engineering :: Chemistry",
+]
+dependencies = [
+  "datamol>=0.12,<0.13",
+  "fsspec>=2024",
+  "lightning>=2.4,<2.7",
+  "loguru>=0.7,<0.8",
+  "numpy==1.26.4",
+  "pandas>=2.2,<3.1",
+  "pydantic>=2,<3",
+  "pyyaml>=6,<7",
+  "rdkit>=2024.3",
+  "scipy>=1.13",
+  "torch>=2.4,<2.5",
+  "torch-cluster>=1.6,<1.7",
+  "torch-geometric>=2.6,<2.7",
+  "torchmetrics>=1.4,<2",
+  "tqdm>=4.66",
+]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["etflow", "etflow.*"]
+
+[tool.ruff]
+line-length = 100

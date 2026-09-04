@@ -1,0 +1,103 @@
+# Inference/evaluation config used for the paper checkpoint.
+# Training entry point is intentionally not distributed.
+datamodule: BaseDataModule
+datamodule_args:
+  data_dir: data/processed
+  dataloader_args:
+    batch_size: 8
+    num_workers: 1
+    persistent_workers: false
+    pin_memory: false
+  partition: ringer_cremp_top30_full456_test6
+  test_dataloader_args:
+    shuffle: false
+  train_dataloader_args:
+    shuffle: true
+  val_dataloader_args:
+    shuffle: false
+eval_args:
+  batch_size: 4
+  sampler_args:
+    n_timesteps: 50
+    s_churn: 1.0
+    sampler_type: ode
+    std: 1.0
+    t_max: 0.9999
+    t_min: 0.0001
+model: BaseFlow
+model_args:
+  activation: silu
+  attn_activation: silu
+  chirality_loss_eps: 1.0e-07
+  chirality_loss_scale: 1.0
+  chirality_loss_weight: 0.5
+  clip_during_norm: true
+  cutoff_lower: 0.0
+  cutoff_upper: 10.0
+  cycle_mult: 1.0
+  distance_influence: both
+  edge_attr_dim: 1
+  global_attention: true
+  global_attention_every_n_layers: 1
+  global_attention_residual_scale: 1.0
+  global_geodesic_bias: true
+  global_geodesic_max_distance: 32
+  first_cycle_steps: 80000
+  gamma: 0.2
+  hidden_channels: 300
+  last_epoch: -1
+  lr: 0.0008
+  lr_scheduler_frequency: 1
+  lr_scheduler_interval: step
+  lr_scheduler_monitor: val/loss
+  lr_scheduler_type: CosineAnnealingWarmupRestarts
+  max_lr: 0.0008
+  max_z: 100
+  min_lr: 1.0e-05
+  neighbor_embedding: true
+  network_type: TorchMDDynamics
+  node_attr_dim: 2
+  num_heads: 12
+  num_layers: 20
+  num_rbf: 64
+  optimizer_type: SOAP
+  prior_type: harmonic
+  qk_norm: true
+  rbf_type: expnorm
+  reduce_op: sum
+  sigma: 0.1
+  so3_equivariant: true
+  trainable_rbf: true
+  warmup_steps: 8000
+  weight_decay: 1.0e-08
+  chirality_warmup_steps: 0
+  chirality_ramp_steps: 0
+  depth_attnres: true
+  depth_attnres_final: true
+  mace_product_lite: true
+  mace_product_lite_every_n_layers: 5
+  mace_product_lite_residual_scale: 1.0
+  max_num_neighbors: 32
+  harmonic_alpha: 1.0
+seed: 3221
+task_name: CycPepFlow-APG-L
+trainer_args:
+  max_epochs: 200
+  devices: 8
+  strategy: ddp
+  accelerator: gpu
+  num_nodes: 1
+release_metadata:
+  checkpoint: checkpoints/cycpepflow-apg-l.ckpt
+  expected_parameter_count: 43430379
+  selected_by: minimum finite epoch-level val/loss among retained top-5 checkpoints
+  inference_steps: 50
+  sampler: deterministic ODE
+  network_amp: bf16
+  generation_batch_size: 96
+  generation_shards: 8
+  sample_budget: 2K generated conformers for K reference conformers per molecule
+  test_lengths:
+  - 4
+  - 5
+  - 6

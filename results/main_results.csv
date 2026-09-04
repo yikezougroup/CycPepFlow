@@ -1,0 +1,14 @@
+method,family,scope,COV_R_pct,COV_P_pct,COV_F1_pct,MAT_R_A,MAT_P_A,MAT_F1_A,source
+RDKit,cheminformatics,RINGER Table S7 all-atom RMSD,41.1,7.5,12.7,0.853,1.419,1.065,RINGER arXiv:2305.19800v2 Table S7
+OMEGA,cheminformatics,RINGER Table S7 all-atom RMSD,36.2,6.4,10.9,0.900,1.433,1.106,RINGER arXiv:2305.19800v2 Table S7
+GeoDiff,learned baseline,RINGER Table S7 all-atom RMSD,25.6,2.7,4.9,0.989,1.753,1.265,RINGER arXiv:2305.19800v2 Table S7
+DMCG,learned baseline,RINGER Table S7 all-atom RMSD,78.3,41.9,54.6,0.534,0.942,0.682,RINGER arXiv:2305.19800v2 Table S7
+TorDiff,learned baseline,RINGER Table S7 all-atom RMSD,44.4,8.3,14.0,0.820,1.399,1.034,RINGER arXiv:2305.19800v2 Table S7
+RINGER,learned baseline,RINGER Table S7 all-atom RMSD,62.3,79.6,69.9,0.691,0.468,0.558,RINGER arXiv:2305.19800v2 Table S7
+ET-Flow,learned baseline,internal official-split rerun aggregate,63.52701970453232,38.766582777129805,48.15013663052084,0.6489432714850677,1.051024862021973,0.8024332914589382,Internal same-split ET-Flow rerun
+DiTMC rPE-L,learned baseline,internal official-split rerun aggregate,73.03438419233281,76.54451603795252,74.7482644079518,0.5476736554364117,0.4596316084392878,0.49980503860272735,Internal same-split DiTMC rerun
+DiTMC aPE-L,learned baseline,internal official-split rerun aggregate,77.84715529427416,73.07422591718087,75.38521801643681,0.4951351796945645,0.5130157326334851,0.5039168915238047,Internal same-split DiTMC rerun
+CycPepFlow-B,ours,internal official-split aggregate,74.95015621201416,77.18462723951134,76.05098239234324,0.530996869031148,0.46133674943409303,0.4937217987180211,CycPepFlow paper full-test report; bundled reproduction target
+CycPepFlow-APG-B,ours,internal official-split aggregate,73.8138008836185,77.99209954684264,75.84544856453849,0.5431644826072258,0.4491619106994181,0.49171078886447056,CycPepFlow paper full-test report; bundled reproduction target
+CycPepFlow-L,ours,internal official-split aggregate,74.15872487034375,78.2143347244581,76.13255709601746,0.5391075458898352,0.44144667453350067,0.48541371479944845,CycPepFlow paper full-test report; bundled reproduction target
+CycPepFlow-APG-L,ours,internal official-split aggregate,72.65007179172055,79.78360279338185,76.04992120694817,0.5552459301485982,0.4186507454455407,0.4773691673616228,CycPepFlow paper full-test report; bundled reproduction target

@@ -1,0 +1,5 @@
+model,width,heads,parameter_count,strict_STP_pct,center_STP_pct
+CycPepFlow-B,192,8,18303745,99.632,99.914
+CycPepFlow-APG-B,192,8,18309185,99.648,99.926
+CycPepFlow-L,300,12,43422219,99.643,99.925
+CycPepFlow-APG-L,300,12,43430379,99.744,99.942

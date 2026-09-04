@@ -1,0 +1,73 @@
+{
+  "format": "Lightning inference-only checkpoint",
+  "checkpoints": [
+    {
+      "variant": "CycPepFlow-B",
+      "release_filename": "cycpepflow-b.ckpt",
+      "selected_epoch": 144,
+      "selected_global_step": 71775,
+      "parameter_count": 18303745,
+      "validation_loss": 1.110365390777588,
+      "raw_checkpoint_basename": "epoch=144-step=71775.ckpt",
+      "raw_checkpoint_bytes": 722120470,
+      "raw_checkpoint_sha256": "089a13a898f7651d3fbc5b262385d8dd02a125d6eca9a4e633f7e0363fcc15bd",
+      "release_checkpoint_bytes": 73571735,
+      "release_checkpoint_sha256": "224c1277f475bcb61af04e5453005282873c1c5475fb1a2f38015526e97bbf87",
+      "state_dict_tensors": 859,
+      "strict_model_load": true,
+      "tensor_equality_with_training_checkpoint": true,
+      "config_basename": "torchmd_maceproductlite_h192_attnres_full_soaplr8e4_charge_chiral_hop123_gated_globalattn_nonbonded_200ep_const_chiral05_4gpu_200ep.yaml"
+    },
+    {
+      "variant": "CycPepFlow-APG-B",
+      "release_filename": "cycpepflow-apg-b.ckpt",
+      "selected_epoch": 144,
+      "selected_global_step": 71775,
+      "parameter_count": 18309185,
+      "validation_loss": 1.111948847770691,
+      "raw_checkpoint_basename": "epoch=144-step=71775.ckpt",
+      "raw_checkpoint_bytes": 722425610,
+      "raw_checkpoint_sha256": "a1cc7a3590b43e0aff9f2ddf0774ac900ab699c887aaf81518c060bd5eb1da2a",
+      "release_checkpoint_bytes": 73606431,
+      "release_checkpoint_sha256": "d3c81dc28bac27c4596c0dc6b6b9d2f8be3ed5b0a9a15ea467cbc24f6a163de2",
+      "state_dict_tensors": 879,
+      "strict_model_load": true,
+      "tensor_equality_with_training_checkpoint": true,
+      "config_basename": "torchmd_maceproductlite_h192_attnresfull_geodesicbias_soaplr8e4_charge_chiral_hop123_gated_globalattn_nonbonded_200ep_const_chiral05_4gpu_200ep.yaml"
+    },
+    {
+      "variant": "CycPepFlow-L",
+      "release_filename": "cycpepflow-l.ckpt",
+      "selected_epoch": 144,
+      "selected_global_step": 71775,
+      "parameter_count": 43422219,
+      "validation_loss": 1.093422532081604,
+      "raw_checkpoint_basename": "epoch=144-step=71775.ckpt",
+      "raw_checkpoint_bytes": 1743480342,
+      "raw_checkpoint_sha256": "ec404804b91cdbc4bec2e63f4611fef3e1e4172c52c086ee86af498e261ab46b",
+      "release_checkpoint_bytes": 174023959,
+      "release_checkpoint_sha256": "b425848f8367f94e5961731fc03062f6ac75b10e288f36c23cb5619f88e4d548",
+      "state_dict_tensors": 859,
+      "strict_model_load": true,
+      "tensor_equality_with_training_checkpoint": true,
+      "config_basename": "torchmd_maceproductlite_h300_attnresfull_nogeodesic_soaplr8e4_charge_chiral_hop123_gated_globalattn_nonbonded_200ep_const_chiral05_4gpu_200ep.yaml"
+    },
+    {
+      "variant": "CycPepFlow-APG-L",
+      "release_filename": "cycpepflow-apg-l.ckpt",
+      "selected_epoch": 185,
+      "selected_global_step": 92070,
+      "parameter_count": 43430379,
+      "validation_loss": 1.0600241422653198,
+      "raw_checkpoint_basename": "epoch=185-step=92070.ckpt",
+      "raw_checkpoint_bytes": 1743828426,
+      "raw_checkpoint_sha256": "1a5fe161b074a7958f1c40a986897844e52959d3d790744a4636b5951b4021f7",
+      "release_checkpoint_bytes": 174068959,
+      "release_checkpoint_sha256": "2a0fc258209af94c542e97868ef08314b517843915f8b0d1f48fb80ffc843046",
+      "state_dict_tensors": 879,
+      "strict_model_load": true,
+      "tensor_equality_with_training_checkpoint": true,
+      "config_basename": "torchmd_maceproductlite_h300_attnresfull_geodesicbias_soaplr8e4_charge_chiral_hop123_gated_globalattn_nonbonded_200ep_const_chiral05_8gpu_200ep.yaml"
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "policy": "official RINGER train.csv/test.csv; 90/10 train/val reconstructed deterministically with numpy default_rng seed=6489, shuffle=True, stratified by num_monomers; test is official 1000 molecules",
+  "counts_by_split": {
+    "test": 1000,
+    "train": 31678,
+    "val": 3520
+  },
+  "num_monomers_by_split": {
+    "test": {
+      "4": 533,
+      "5": 347,
+      "6": 120
+    },
+    "train": {
+      "4": 15578,
+      "5": 11967,
+      "6": 4133
+    },
+    "val": {
+      "4": 1731,
+      "5": 1330,
+      "6": 459
+    }
+  },
+  "unique_smiles_total": 36198,
+  "trainval_smiles_overlap_test": 0,
+  "test_uniqueconfs_sum": 877898,
+  "test_totalconfs_sum": 2334975,
+  "trainval_uniqueconfs_cap30_sum": 1053427,
+  "train_uniqueconfs_cap30_sum": 948125,
+  "val_uniqueconfs_cap30_sum": 105302,
+  "manifest_sha256": "246cf2d05a3a9d582fc8891791095141a8957348ba937481c0c72f60f9c1cfaa",
+  "ringer_train_csv_sha256": "ee80b0e32a1a4c643200e0777181e5a841ef9cd1c27cb22eda203fe2f768682e",
+  "ringer_test_csv_sha256": "ba44e81c7a6068dbd587c4611583099bab63ee5fa27a94879f546b5e6c3e440e"
+}

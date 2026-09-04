@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.venv/
+
+# Generated benchmark artifacts
+data/
+generated/
+metrics/
+*.pkl
+*.pt
+*.sdf
+
+# Checkpoints are GitHub Release assets, not Git blobs
+checkpoints/*.ckpt
+!checkpoints/README.md
+!checkpoints/SHA256SUMS
+!checkpoints/checkpoint_manifest.json
+
+# Local logs and scheduler outputs
+logs/
+*.out
+*.err
