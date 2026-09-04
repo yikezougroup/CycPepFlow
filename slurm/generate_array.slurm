@@ -15,7 +15,7 @@ set -euo pipefail
 : "${VARIANT:?set VARIANT to cycpepflow_b, cycpepflow_apg_b, cycpepflow_l, or cycpepflow_apg_l}"
 : "${NMER:?set NMER to 4, 5, or 6}"
 : "${DATA_DIR:=data/processed}"
-: "${PARTITION:=ringer_cremp_top30_full456_test6}"
+: "${PARTITION:=ringer_cremp_top30_testall}"
 : "${OUT_ROOT:=generated}"
 : "${NETWORK_AMP:=bf16}"
 : "${NUM_SHARDS:=8}"

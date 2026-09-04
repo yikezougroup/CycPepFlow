@@ -113,18 +113,18 @@ printf '%s  %s\n' 925d058e9d96942e5aca55b12480efc3 downloads/pickle.tar.gz | md5
 Convert directly from the archive (no extraction required):
 
 ```bash
-mkdir -p data/processed/ringer_cremp_top30_full456_test6 data/reports
+mkdir -p data/processed/ringer_cremp_top30_testall data/reports
 python scripts/convert_cremp.py \
   --archive downloads/pickle.tar.gz \
   --manifest benchmark/splits/ringer_cremp_combined_manifest.csv \
-  --out-root data/processed/ringer_cremp_top30_full456_test6 \
+  --out-root data/processed/ringer_cremp_top30_testall \
   --max-confs 30 \
   --all-confs-splits test \
   --summary-json data/reports/conversion_summary.json \
   --failures-csv data/reports/conversion_failures.csv
 ```
 
-Alternatively, pass `--pickle-dir /path/to/extracted/pickle` instead of `--archive`. Before generation, verify that `data/processed/ringer_cremp_top30_full456_test6/test/` contains all 1,000 test records and that the conversion summary reports 877,898 retained test conformers.
+Alternatively, pass `--pickle-dir /path/to/extracted/pickle` instead of `--archive`. Before generation, verify that `data/processed/ringer_cremp_top30_testall/test/` contains all 1,000 test records and that the conversion summary reports 877,898 retained test conformers.
 
 ## 4. One-molecule smoke generation
 
@@ -136,7 +136,7 @@ python scripts/generate_cremp.py \
   --config configs/cycpepflow_b.yaml \
   --checkpoint checkpoints/cycpepflow-b.ckpt \
   --data_dir data/processed \
-  --partition ringer_cremp_top30_full456_test6 \
+  --partition ringer_cremp_top30_testall \
   --manifest benchmark/splits/test_manifest.csv \
   --num-monomers 4 \
   --shard_id 0 --num_shards 1 \

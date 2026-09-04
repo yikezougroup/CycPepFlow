@@ -8,7 +8,7 @@ datamodule_args:
     num_workers: 1
     persistent_workers: false
     pin_memory: false
-  partition: ringer_cremp_top30_full456_test6
+  partition: ringer_cremp_top30_testall
   test_dataloader_args:
     shuffle: false
   train_dataloader_args:
