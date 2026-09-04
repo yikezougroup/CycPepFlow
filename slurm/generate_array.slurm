@@ -33,7 +33,7 @@ python scripts/generate_cremp.py \
   --checkpoint "checkpoints/${VARIANT//_/-}.ckpt" \
   --data_dir "$DATA_DIR" \
   --partition "$PARTITION" \
-  --manifest benchmark/splits/ringer_cremp_combined_manifest.csv \
+  --manifest benchmark/splits/test_manifest.csv \
   --num-monomers "$NMER" \
   --shard_id "$SLURM_ARRAY_TASK_ID" \
   --num_shards "$NUM_SHARDS" \

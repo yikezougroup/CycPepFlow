@@ -13,6 +13,7 @@ REQUIRED = {
     "configs/cycpepflow_l.yaml", "configs/cycpepflow_apg_l.yaml",
     "checkpoints/checkpoint_manifest.json", "checkpoints/SHA256SUMS",
     "benchmark/splits/ringer_cremp_combined_manifest.csv",
+    "benchmark/splits/test_manifest.csv",
     "benchmark/splits/split_summary.json",
     "results/main_results.csv", "results/per_size_results.csv",
     "results/model_scale_stereo.csv", "scripts/aggregate_results.py",

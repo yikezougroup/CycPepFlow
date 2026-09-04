@@ -137,7 +137,7 @@ python scripts/generate_cremp.py \
   --checkpoint checkpoints/cycpepflow-b.ckpt \
   --data_dir data/processed \
   --partition ringer_cremp_top30_full456_test6 \
-  --manifest benchmark/splits/ringer_cremp_combined_manifest.csv \
+  --manifest benchmark/splits/test_manifest.csv \
   --num-monomers 4 \
   --shard_id 0 --num_shards 1 \
   --max_molecules 1 --max_ref_confs 1 \
@@ -148,7 +148,7 @@ python scripts/generate_cremp.py \
 python scripts/score_covmat.py \
   --parts generated/smoke/shard_0.pkl \
   --outdir metrics/smoke \
-  --manifest benchmark/splits/ringer_cremp_combined_manifest.csv \
+  --manifest benchmark/splits/test_manifest.csv \
   --num-monomers 4 --threshold 0.75 --num_workers 1 \
   --limit-filtered-molecules 1
 

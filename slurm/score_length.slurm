@@ -27,7 +27,7 @@ fi
 python scripts/score_covmat.py \
   --parts "${PARTS[@]}" \
   --outdir "$METRICS_ROOT/$VARIANT/${NMER}mer" \
-  --manifest benchmark/splits/ringer_cremp_combined_manifest.csv \
+  --manifest benchmark/splits/test_manifest.csv \
   --num-monomers "$NMER" \
   --threshold 0.75 \
   --num_workers "$NUM_WORKERS"
