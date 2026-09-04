@@ -10,7 +10,7 @@ import subprocess
 from pathlib import Path
 
 REPO = "yikezougroup/CycPepFlow"
-TAG = "v0.1.0"
+TAG = "v0.1.1"
 
 
 def sha256(path: Path) -> str:

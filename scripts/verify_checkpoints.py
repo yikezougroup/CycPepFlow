@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from etflow.models import BaseFlow  # noqa: E402
+from cycpepflow.models import BaseFlow  # noqa: E402
 
 VARIANTS = {
     "CycPepFlow-B": ("cycpepflow_b.yaml", "cycpepflow-b.ckpt", 18_303_745),
@@ -54,8 +54,6 @@ def main() -> None:
             raise RuntimeError(f"{name}: {parameter_count=} != {expected_params=}")
 
         ckpt_path = args.checkpoint_dir / checkpoint_name
-        checkpoint = torch.load(ckpt_path, map_location="cpu", weights_only=False)
-        model.load_state_dict(checkpoint["state_dict"], strict=True)
         if not args.skip_sha256:
             actual_sha = sha256(ckpt_path)
             expected_sha = by_file[checkpoint_name]["release_checkpoint_sha256"]
@@ -63,6 +61,8 @@ def main() -> None:
                 raise RuntimeError(f"{name}: SHA256 mismatch")
         else:
             actual_sha = None
+        checkpoint = torch.load(ckpt_path, map_location="cpu", weights_only=True)
+        model.load_state_dict(checkpoint["state_dict"], strict=True)
 
         results.append({
             "variant": name,

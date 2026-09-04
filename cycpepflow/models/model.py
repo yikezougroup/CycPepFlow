@@ -6,20 +6,20 @@ from pytorch_lightning import seed_everything
 from torch import Tensor
 from torch_geometric.data import Batch
 
-from etflow.commons.configs import CONFIG_DICT
-from etflow.commons.covmat import set_multiple_rdmol_positions
-from etflow.commons.featurization import MoleculeFeaturizer, get_mol_from_smiles
-from etflow.commons.utils import signed_volume
-from etflow.models.base import BaseModel
-from etflow.models.loss import batchwise_l2_loss, stp_chirality_loss
-from etflow.models.utils import (
+from cycpepflow.commons.configs import CONFIG_DICT
+from cycpepflow.commons.covmat import set_multiple_rdmol_positions
+from cycpepflow.commons.featurization import MoleculeFeaturizer, get_mol_from_smiles
+from cycpepflow.commons.utils import signed_volume
+from cycpepflow.models.base import BaseModel
+from cycpepflow.models.loss import batchwise_l2_loss, stp_chirality_loss
+from cycpepflow.models.utils import (
     HarmonicSampler,
     center_of_mass,
     extend_bond_index,
     rmsd_align,
     unsqueeze_like,
 )
-from etflow.networks.torchmd_net import TorchMDDynamics
+from cycpepflow.networks.torchmd_net import TorchMDDynamics
 
 __all__ = ["BaseFlow"]
 
@@ -208,17 +208,17 @@ class BaseFlow(BaseModel):
             print(f"Device {device} not found. Using {found_device} instead")
             device = found_device
 
-        etflow_model = cls.from_config(config.model_dict())
+        model = cls.from_config(config.model_dict())
         checkpoint = torch.load(checkpoint_path, map_location=device)
         if isinstance(checkpoint, dict):
             if "state_dict" in checkpoint:
                 # Standard Lightning checkpoint
-                etflow_model.load_state_dict(checkpoint["state_dict"])
+                model.load_state_dict(checkpoint["state_dict"])
             else:
                 # Plain state dict
-                etflow_model.load_state_dict(checkpoint)
-        etflow_model.eval()
-        return etflow_model
+                model.load_state_dict(checkpoint)
+        model.eval()
+        return model
 
     def sigma_t(self, t):
         return self.sigma * torch.sqrt(t * (1 - t))

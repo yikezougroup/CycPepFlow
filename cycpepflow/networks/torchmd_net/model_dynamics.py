@@ -240,7 +240,7 @@ class ScalarGlobalAttention(nn.Module):
         geodesic_distance: Optional[Tensor] = None,
     ) -> Tensor:
         output_dtype = x.dtype
-        force_fp32 = os.environ.get("ETFLOW_GLOBAL_ATTN_FORCE_FP32", "").strip().lower() in {"1", "true", "yes", "on"}
+        force_fp32 = os.environ.get("CYCPEPFLOW_GLOBAL_ATTN_FORCE_FP32", "").strip().lower() in {"1", "true", "yes", "on"}
         if force_fp32:
             with torch.autocast(device_type=x.device.type, enabled=False):
                 return self._forward_impl(x.float(), batch, geodesic_distance).to(dtype=output_dtype)
@@ -249,7 +249,7 @@ class ScalarGlobalAttention(nn.Module):
 
 
 class DepthAttentionResidual(nn.Module):
-    """Invariant full-depth AttnRes router for ETFlow scalar/vector streams.
+    """Invariant full-depth AttnRes router for CycPepFlow scalar/vector streams.
 
     Depth-attention weights are computed only from invariant scalar node states.
     The same scalar weights mix the equivariant vector stream, preserving
@@ -292,7 +292,7 @@ class MACEProductLiteResidual(nn.Module):
 
     The branch is deliberately dependency-light: it builds invariant many-body
     features from the current scalar stream, vector-channel squared norms,
-    scalar-vector products, transformed node attributes, and ETFlow time. It then
+    scalar-vector products, transformed node attributes, and CycPepFlow time. It then
     returns a scalar residual and an invariant channel gate on the existing vector
     stream. Because all gates are invariant and the vector update only rescales
     the equivariant vector stream, the output remains equivariant while adding a

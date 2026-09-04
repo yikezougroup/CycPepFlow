@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Extract official RINGER/CREMP split molecules into ETFlow-style .pt files.
+"""Extract official RINGER/CREMP split molecules into CycPepFlow-style .pt files.
 
 Input is either CREMP Zenodo record 7931445 `pickle.tar.gz` or an extracted directory
 containing the official per-molecule `*.pickle` files.
@@ -22,7 +22,6 @@ from pathlib import Path
 import torch
 import datamol as dm
 from rdkit import Chem, RDLogger
-from torch_geometric.data import Data
 
 RDLogger.DisableLog('rdApp.*')
 
@@ -100,10 +99,10 @@ def find_source_smiles(obj, mol, manifest_smiles):
     return Chem.MolToSmiles(Chem.RemoveHs(mol), isomericSmiles=True, canonical=True)
 
 
-def etflow_explicit_h_smiles(mol):
-    """Return ETFlow-compatible explicit-H, atom-mapped SMILES preserving RDKit atom order.
+def ordered_explicit_h_smiles(mol):
+    """Return CycPepFlow-compatible explicit-H, atom-mapped SMILES preserving RDKit atom order.
 
-    ETFlow reconstructs the graph from `data.smiles` with datamol.to_mol(..., remove_hs=False,
+    CycPepFlow reconstructs the graph from `data.smiles` with datamol.to_mol(..., remove_hs=False,
     ordered=True), then adds the saved coordinate tensor as a conformer. The CREMP pickles contain
     explicit-H coordinates, so a normal/heavy-atom SMILES causes RDKit atom-count mismatches. The
     atom-map numbers emitted by datamol make datamol's ordered loader recover the original atom order.
@@ -236,36 +235,38 @@ def convert_one(obj, row, max_confs, keep_all_confs=False):
     edge_index, edge_type = edge_tensors(mol)
     selected_energies = [energies[i] for i in order] if energies is not None else [float('nan')] * len(order)
     selected_weights = [weights[i] for i in order] if weights is not None else [float('nan')] * len(order)
-    smiles = etflow_explicit_h_smiles(mol)
+    smiles = ordered_explicit_h_smiles(mol)
     source_smiles = find_source_smiles(obj, mol, row.get('smiles', ''))
-    data = Data(
-        atomic_numbers=atomic_numbers,
-        atom_type=atomic_numbers.clone(),
-        charges=charges,
-        edge_index=edge_index,
-        edge_type=edge_type,
-        pos=pos,
-        energy=torch.tensor(selected_energies, dtype=torch.float32).reshape(-1, 1),
-        totalenergy=torch.tensor(selected_energies, dtype=torch.float32).reshape(-1, 1),
-        boltzmannweight=torch.tensor(selected_weights, dtype=torch.float32).reshape(-1, 1),
-        smiles=smiles,
-        source_smiles=source_smiles,
-        sequence=row.get('sequence', ''),
-        subset='ringer_cremp',
-        split=row.get('split', ''),
-        summary_row_1based=int(row.get('summary_row_1based', -1)),
-        num_original_conformers=int(nconf),
-        selected_conformer_indices=torch.tensor(order, dtype=torch.long),
-    )
+    # Keep the serialized output to tensors and primitive Python containers so
+    # inference can load it with torch.load(..., weights_only=True).
+    data = {
+        'atomic_numbers': atomic_numbers,
+        'atom_type': atomic_numbers.clone(),
+        'charges': charges,
+        'edge_index': edge_index,
+        'edge_type': edge_type,
+        'pos': pos,
+        'energy': torch.tensor(selected_energies, dtype=torch.float32).reshape(-1, 1),
+        'totalenergy': torch.tensor(selected_energies, dtype=torch.float32).reshape(-1, 1),
+        'boltzmannweight': torch.tensor(selected_weights, dtype=torch.float32).reshape(-1, 1),
+        'smiles': smiles,
+        'source_smiles': source_smiles,
+        'sequence': row.get('sequence', ''),
+        'subset': 'ringer_cremp',
+        'split': row.get('split', ''),
+        'summary_row_1based': int(row.get('summary_row_1based', -1)),
+        'num_original_conformers': int(nconf),
+        'selected_conformer_indices': torch.tensor(order, dtype=torch.long),
+    }
     meta = {
         'sequence': row.get('sequence', ''),
         'split': row.get('split', ''),
         'summary_row_1based': int(row.get('summary_row_1based', -1)),
         'n_atoms': int(mol.GetNumAtoms()),
         'n_h_atoms': int(sum(1 for a in mol.GetAtoms() if a.GetAtomicNum() == 1)),
-        'etflow_smiles_policy': 'datamol explicit_hs=True with_atom_indices=True canonical=False; preserves explicit-H atom order for ETFlow',
+        'cycpepflow_smiles_policy': 'datamol explicit_hs=True with_atom_indices=True canonical=False; preserves explicit-H atom order for CycPepFlow',
         'source_smiles': source_smiles,
-        'etflow_smiles_len': int(len(smiles)),
+        'cycpepflow_smiles_len': int(len(smiles)),
         'n_original_conformers_in_pickle_mol': int(nconf),
         'n_saved_conformers': int(pos.shape[0]),
         'keep_all_conformers': bool(keep_all_confs),

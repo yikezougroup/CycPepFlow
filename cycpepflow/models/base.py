@@ -6,8 +6,8 @@ from loguru import logger as log
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 
-from etflow.commons.utils import Queue
-from etflow.schedulers import CosineAnnealingWarmupRestarts
+from cycpepflow.commons.utils import Queue
+from cycpepflow.schedulers import CosineAnnealingWarmupRestarts
 
 
 class BaseModel(LightningModule):
@@ -96,7 +96,7 @@ class BaseModel(LightningModule):
                 amsgrad=self.ams_grad,
             )
         elif self.optimizer_type == "SOAP":
-            from etflow.optim.soap import SOAP
+            from cycpepflow.optim.soap import SOAP
             log.info(
                 f"Using SOAP optimizer with lr={self.lr}, betas=(0.95, 0.95), "
                 f"weight_decay={self.weight_decay}, precondition_frequency=10, "

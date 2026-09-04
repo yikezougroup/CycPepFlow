@@ -1,6 +1,6 @@
 # Model checkpoints
 
-The four inference-only Lightning checkpoints are attached to the private GitHub release **`v0.1.0`** rather than committed as Git blobs.
+The four inference-only Lightning checkpoints are attached to the private GitHub release **`v0.1.1`** rather than committed as Git blobs.
 
 Download and verify them from an authenticated checkout:
 

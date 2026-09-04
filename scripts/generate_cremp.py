@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Generate ETFlow conformer samples for one test-set shard.
+"""Generate CycPepFlow conformer samples for one test-set shard.
 
-This is a shardable variant of ETFlow scripts/eval.py that accepts an explicit
-molecule-level processed data_dir/partition.  It is intended for COV/MAT: each
-output Data has pos_ref = all reference conformers and pos_gen = 2x as many
-model samples, matching etflow.commons.covmat.CovMatEvaluator(ratio=2).
+The command reads molecule-level converted records from an explicit data root and
+partition. Each output record stores all reference conformers in ``pos_ref`` and
+twice as many model samples in ``pos_gen`` for the released COV/MAT protocol.
 """
 import argparse
 import csv
@@ -27,9 +26,9 @@ from loguru import logger as log
 from torch_geometric.data import Batch, Data
 from tqdm import tqdm
 
-from etflow.commons import save_pkl
-from etflow.data import EuclideanDataset
-from etflow.models import BaseFlow
+from cycpepflow.commons import save_pkl
+from cycpepflow.data import ProcessedConformerDataset
+from cycpepflow.models import BaseFlow
 
 
 def main():
@@ -55,11 +54,13 @@ def main():
     )
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument(
-        "--stp-chirality-repair",
+        "--allow-unsafe-legacy-records",
         action="store_true",
-        help="After sampling each molecule, apply deterministic STP center-reflection chirality projection before saving.",
+        help=(
+            "Load trusted v0.1.0 PyG .pt records with pickle. Never use this for "
+            "downloaded or otherwise untrusted files; reconvert them instead."
+        ),
     )
-    ap.add_argument("--stp-repair-max-passes", type=int, default=8)
     args = ap.parse_args()
 
     t0 = time.time()
@@ -80,10 +81,11 @@ def main():
         generation_dataset_args["include_chirality_in_node_attr"] = bool(
             cfg_test_dataset_args["include_chirality_in_node_attr"]
         )
-    dataset = EuclideanDataset(
+    dataset = ProcessedConformerDataset(
         data_dir=args.data_dir,
         partition=args.partition,
         split="test",
+        allow_unsafe_legacy_pickle=args.allow_unsafe_legacy_records,
         **generation_dataset_args,
     )
     log.info(f"Generation dataset args={generation_dataset_args}")
@@ -98,7 +100,7 @@ def main():
                 r for r in filter_manifest_rows
                 if int(r.get("num_monomers", -1)) == int(args.num_monomers)
             ]
-        # ETFlow processed test files are named with the manifest split_index as
+        # Converted test files are named with the manifest split_index as
         # their six-digit prefix (e.g. 000880_*.pt).  Build the map from the
         # actual dataset files instead of assuming sorted list position.
         prefix_to_dataset_pos = {}
@@ -138,7 +140,7 @@ def main():
     if cfg["model"] != "BaseFlow":
         raise ValueError(f"Unsupported model class in release config: {cfg['model']}")
     model = BaseFlow(**cfg["model_args"])
-    ckpt = torch.load(args.checkpoint, map_location="cpu", weights_only=False)
+    ckpt = torch.load(args.checkpoint, map_location="cpu", weights_only=True)
     model.load_state_dict(ckpt["state_dict"], strict=True)
     model: BaseFlow = model.to(device)
     model.network_amp = args.network_amp
@@ -153,26 +155,9 @@ def main():
     generated = []
     times = []
     molecule_rows = []
-    repair_rows = []
-    repair_totals = {
-        "strict_before": 0,
-        "strict_after": 0,
-        "center_match_before": 0,
-        "center_match_after": 0,
-        "center_total": 0,
-        "reflections": 0,
-        "degenerate_reflections": 0,
-        "not_converged_conformers": 0,
-    }
-    repair_record_fn = None
-    if args.stp_chirality_repair:
-        from repair_etflow_stp_chirality import repair_record as repair_record_fn  # noqa: PLC0415
-
-        log.info("STP chirality repair enabled: center-reflect projection, max_passes={}", args.stp_repair_max_passes)
     for idx in tqdm(indices, desc=f"shard{args.shard_id}"):
-        data = dataset[idx]
-        source = torch.load(dataset.data_files[idx])
-        pos_ref = source.pos.cpu().numpy()
+        data, reference_positions = dataset.get_with_references(idx)
+        pos_ref = reference_positions.cpu().numpy()
         if args.max_ref_confs is not None:
             pos_ref = pos_ref[: args.max_ref_confs]
         n_true = int(pos_ref.shape[0])
@@ -212,12 +197,6 @@ def main():
             pos_gen_chunks.append(pos)
         pos_gen = np.concatenate(pos_gen_chunks, axis=0)
         record = Data(smiles=smiles, pos_ref=pos_ref, rdmol=data.mol, pos_gen=pos_gen)
-        repair_summary = None
-        if repair_record_fn is not None:
-            _, record, repair_summary = repair_record_fn((int(idx), record, 1e-7, args.stp_repair_max_passes))
-            repair_rows.append(repair_summary)
-            for key in repair_totals:
-                repair_totals[key] += int(repair_summary.get(key, 0))
         generated.append(record)
         molecule_row = {
             "idx": int(idx),
@@ -228,15 +207,6 @@ def main():
             "n_atoms": n_atoms,
             "seconds_per_generated_conformer_mean_so_far": float(np.mean(times)) if times else None,
         }
-        if repair_summary is not None:
-            molecule_row.update({
-                "stp_repair_strict_before": int(repair_summary["strict_before"]),
-                "stp_repair_strict_after": int(repair_summary["strict_after"]),
-                "stp_repair_center_match_before": int(repair_summary["center_match_before"]),
-                "stp_repair_center_match_after": int(repair_summary["center_match_after"]),
-                "stp_repair_center_total": int(repair_summary["center_total"]),
-                "stp_repair_reflections": int(repair_summary["reflections"]),
-            })
         molecule_rows.append(molecule_row)
 
     out = Path(args.out); out.parent.mkdir(parents=True, exist_ok=True)
@@ -265,30 +235,12 @@ def main():
         "include_chirality_in_node_attr": bool(
             getattr(dataset, "include_chirality_in_node_attr", True)
         ),
+        "unsafe_legacy_record_loading": bool(args.allow_unsafe_legacy_records),
         "seconds_per_generated_conformer_mean": float(np.mean(times)) if times else None,
         "elapsed_seconds": float(time.time() - t0),
         "max_ref_confs": int(args.max_ref_confs) if args.max_ref_confs is not None else None,
-        "stp_chirality_repair_enabled": bool(args.stp_chirality_repair),
-        "stp_repair_max_passes": int(args.stp_repair_max_passes),
-        "stp_repair_totals": repair_totals if args.stp_chirality_repair else None,
-        "stp_repair_strict_before_rate": (
-            repair_totals["strict_before"] / sum(r["n_gen"] for r in molecule_rows)
-            if args.stp_chirality_repair and molecule_rows else None
-        ),
-        "stp_repair_strict_after_rate": (
-            repair_totals["strict_after"] / sum(r["n_gen"] for r in molecule_rows)
-            if args.stp_chirality_repair and molecule_rows else None
-        ),
-        "stp_repair_center_before_rate": (
-            repair_totals["center_match_before"] / repair_totals["center_total"]
-            if args.stp_chirality_repair and repair_totals["center_total"] else None
-        ),
-        "stp_repair_center_after_rate": (
-            repair_totals["center_match_after"] / repair_totals["center_total"]
-            if args.stp_chirality_repair and repair_totals["center_total"] else None
-        ),
+        "stp_chirality_repair_enabled": False,
         "molecules": molecule_rows,
-        "stp_repair_molecules": repair_rows if args.stp_chirality_repair else None,
         "out": str(out),
     }
     summary = Path(args.summary); summary.parent.mkdir(parents=True, exist_ok=True)

@@ -4,7 +4,7 @@ import subprocess
 from rdkit import Geometry
 from rdkit.Chem import rdmolfiles
 
-from etflow.commons import build_conformer
+from cycpepflow.commons import build_conformer
 
 my_dir = f"/tmp/{os.getpid()}"
 if not os.path.isdir(my_dir):

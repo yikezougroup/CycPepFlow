@@ -6,7 +6,7 @@ except ModuleNotFoundError:
 
 
 try:
-    __version__ = version("etflow")
+    __version__ = version("cycpepflow")
 except PackageNotFoundError:
     # package is not installed
     __version__ = "dev"

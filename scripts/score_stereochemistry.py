@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Coordinate-geometry (STP/oriented-volume) chirality evaluator for ETFlow generated_files.pkl.
+"""Coordinate-geometry (STP/oriented-volume) chirality evaluator for CycPepFlow generated_files.pkl.
 
 Main metric follows Dizhou's preferred convention: use source-specified tetrahedral
 chiral centers from the input SMILES, calibrate each center's expected handedness
@@ -37,7 +37,7 @@ def as_numpy(x: Any) -> np.ndarray:
 
 
 def mol_from_ordered_smiles(smiles: str, expected_atoms: int | None = None) -> Chem.Mol:
-    """Build a mol while preserving the atom order used by ETFlow's atom-mapped SMILES."""
+    """Build a mol while preserving the atom order used by CycPepFlow's atom-mapped SMILES."""
     errors = []
     for mode in ("datamol_ordered", "rdkit"):
         try:
@@ -336,7 +336,7 @@ def main() -> None:
         "eps": args.eps,
         "method": (
             "Coordinate scalar-triple-product/oriented-volume chirality. Source-specified tetrahedral centers are "
-            "atoms with RDKit CHI_TETRAHEDRAL_CW/CCW in the ETFlow atom-mapped SMILES. Neighbor tuple is the "
+            "atoms with RDKit CHI_TETRAHEDRAL_CW/CCW in the CycPepFlow atom-mapped SMILES. Neighbor tuple is the "
             "sorted first-three atom indices. Expected handedness is the modal nonzero STP sign over reference "
             "conformers. A generated conformer is strict-correct if all usable source-specified centers match expected sign."
         ),

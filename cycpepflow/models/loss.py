@@ -87,7 +87,7 @@ def stp_raw_signed_volume(
     """Raw evaluator-compatible scalar triple products at tetrahedral centers.
 
     The RINGER/CREMP STP evaluator uses the source-specified center atom and the
-    sorted first-three neighbor atom indices. ETFlow's PyG data stores center
+    sorted first-three neighbor atom indices. CycPepFlow's PyG data stores center
     indices as ``chiral_index`` and all four neighbors as ``chiral_nbr_index``;
     after PyG batching both tensors are already atom-index offset into the
     concatenated coordinate tensor.

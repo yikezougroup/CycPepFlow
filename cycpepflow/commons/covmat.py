@@ -253,17 +253,17 @@ class CovMatEvaluator(object):
         # remove packed_data_list from memory
         del packed_data_list
 
-        env_chunk_size = os.environ.get("ETFLOW_COVMAT_CHUNK_SIZE")
+        env_chunk_size = os.environ.get("CYCPEPFLOW_COVMAT_CHUNK_SIZE")
         if env_chunk_size:
             try:
                 env_chunk_size = max(1, int(env_chunk_size))
             except ValueError:
                 log.warning(
-                    "Ignoring invalid ETFLOW_COVMAT_CHUNK_SIZE=%r", env_chunk_size
+                    "Ignoring invalid CYCPEPFLOW_COVMAT_CHUNK_SIZE=%r", env_chunk_size
                 )
                 env_chunk_size = None
 
-        pool_mode = os.environ.get("ETFLOW_COVMAT_POOL_MODE", "per_molecule")
+        pool_mode = os.environ.get("CYCPEPFLOW_COVMAT_POOL_MODE", "per_molecule")
         pool_mode = pool_mode.strip().lower().replace("-", "_")
         use_persistent_pool = pool_mode in {"persistent", "global", "all_molecules"}
 

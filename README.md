@@ -38,7 +38,7 @@ Unrounded pooled values are in [`results/main_results.csv`](results/main_results
 benchmark/splits/    exact seed-6489 train/validation/test identity manifest
 checkpoints/         checkpoint manifest and SHA-256 checksums (weights are release assets)
 configs/             four inference/evaluation configurations
-etflow/              CycPepFlow/ET-Flow model and data implementation
+cycpepflow/          CycPepFlow model, inference data loader, and utilities
 results/             unrounded paper values used as reproduction targets
 scripts/             data conversion, generation, scoring, aggregation, and audits
 slurm/               resource-matched generation and scoring templates
@@ -68,7 +68,7 @@ python -m pip install -e .
 Verify imports and the static release contract:
 
 ```bash
-python -c "import torch, torch_geometric, torch_cluster, rdkit, etflow; print(torch.__version__)"
+python -c "import torch, torch_geometric, torch_cluster, rdkit, cycpepflow; print(torch.__version__)"
 python scripts/audit_release.py
 ```
 
@@ -125,6 +125,8 @@ python scripts/convert_cremp.py \
 ```
 
 Alternatively, pass `--pickle-dir /path/to/extracted/pickle` instead of `--archive`. Before generation, verify that `data/processed/ringer_cremp_top30_testall/test/` contains all 1,000 test records and that the conversion summary reports 877,898 retained test conformers.
+
+> **Serialized-data safety.** The official CREMP input is Python-pickle data, so only use the checksum-verified Zenodo archive above. CycPepFlow v0.1.1 writes restricted-load-compatible tensor/primitive `.pt` records. If you reuse trusted records created by v0.1.0, generation requires `--allow-unsafe-legacy-records`; this enables pickle execution and must never be used with untrusted files. Re-conversion is safer.
 
 ## 4. One-molecule smoke generation
 

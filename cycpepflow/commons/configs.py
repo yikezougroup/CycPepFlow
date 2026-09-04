@@ -10,7 +10,7 @@ import fsspec
 from tqdm import tqdm
 from typing_extensions import Literal
 
-CACHE = "~/.cache/etflow"
+CACHE = "~/.cache/cycpepflow"
 
 
 def download_with_progress(url, destination, chunk_size=2**20):  # 1MB chunks

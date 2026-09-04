@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """6-mer filtered CREMP COV/MAT scorer with one persistent global process pool.
 
-This preserves ETFlow COV/MAT semantics (RDKit GetBestRMS, ratio=2) while avoiding
+This preserves the released COV/MAT protocol (RDKit GetBestRMS, ratio=2) while avoiding
 CovMatEvaluator's per-molecule Pool spawn/teardown.  It is robust to both dict-style
 packed records and PyG Data objects.
 """
@@ -25,8 +25,8 @@ from rdkit import Chem
 from rdkit.Chem import rdMolAlign as MA
 from tqdm import tqdm
 
-from etflow.commons import load_pkl, save_pkl
-from etflow.commons.covmat import (
+from cycpepflow.commons import load_pkl, save_pkl
+from cycpepflow.commons.covmat import (
     calc_performance_stats,
     print_covmat_results,
     set_rdmol_positions,
@@ -157,7 +157,7 @@ def _global_ref_chunk_worker(task):
                     rmsd_vals.append(MA.AlignMol(gen, ref))
                 else:
                     rmsd_vals.append(MA.GetBestRMS(gen, ref))
-            except Exception:  # noqa: BLE001 - preserve original ETFlow nan-on-failure behavior
+            except Exception:  # noqa: BLE001 - preserve nan-on-failure behavior
                 rmsd_vals.append(np.nan)
         rows.append((i_true, rmsd_vals))
     return smiles, rows
@@ -213,7 +213,7 @@ def compute_covmat_global_pool(
         set_field(data, "pos_ref", pos_ref)
         set_field(data, "pos_gen", pos_gen)
 
-        # ETFlow's original get_best_rmsd() removes hydrogens on every single
+        # The reference implementation removes hydrogens on every single
         # reference/generated comparison. For CREMP 5-mers this is ~1.34B calls,
         # so repeated Chem.RemoveHs dominates avoidable overhead. Pre-remove H
         # once per conformer and still call RDKit's GetBestRMS on the heavy-atom
@@ -370,7 +370,7 @@ def write_outputs(args, packed, manifest_total, expected, manifest_counts, part_
         "parts": part_rows,
         "coverage_curve_csv": str(cov_curve_path),
         "per_molecule_covmat_csv": str(per_mol_metrics_path),
-        "note": f"COV/MAT computed with RDKit GetBestRMS at threshold {args.threshold} on only test-set cyclic peptides with num_monomers={args.num_monomers}; global process-pool scheduler preserves ETFlow ratio=2 semantics.",
+        "note": f"COV/MAT computed with RDKit GetBestRMS at threshold {args.threshold} on only test-set cyclic peptides with num_monomers={args.num_monomers}; global process-pool scheduler preserves the released ratio=2 protocol.",
     }
     summary_path = metrics_dir / "cremp_summary.json"
     summary_path.write_text(json.dumps(summary, indent=2))
@@ -388,11 +388,11 @@ def main():
     ap.add_argument("--num_workers", type=int, default=96)
     ap.add_argument("--use_alignmol", action="store_true")
     ap.add_argument("--limit-filtered-molecules", type=int, default=0)
-    ap.add_argument("--ref-chunk-size", type=int, default=int(os.environ.get("ETFLOW_COVMAT_REF_CHUNK_SIZE", "1")))
-    ap.add_argument("--target-pairs-per-task", type=int, default=int(os.environ.get("ETFLOW_COVMAT_TARGET_PAIRS_PER_TASK", "0")))
-    ap.add_argument("--pool-chunksize", type=int, default=int(os.environ.get("ETFLOW_COVMAT_POOL_CHUNKSIZE", "1")))
-    ap.add_argument("--score-shard-id", type=int, default=int(os.environ.get("ETFLOW_SCORE_SHARD_ID", "0")))
-    ap.add_argument("--num-score-shards", type=int, default=int(os.environ.get("ETFLOW_NUM_SCORE_SHARDS", "1")))
+    ap.add_argument("--ref-chunk-size", type=int, default=int(os.environ.get("CYCPEPFLOW_COVMAT_REF_CHUNK_SIZE", "1")))
+    ap.add_argument("--target-pairs-per-task", type=int, default=int(os.environ.get("CYCPEPFLOW_COVMAT_TARGET_PAIRS_PER_TASK", "0")))
+    ap.add_argument("--pool-chunksize", type=int, default=int(os.environ.get("CYCPEPFLOW_COVMAT_POOL_CHUNKSIZE", "1")))
+    ap.add_argument("--score-shard-id", type=int, default=int(os.environ.get("CYCPEPFLOW_SCORE_SHARD_ID", "0")))
+    ap.add_argument("--num-score-shards", type=int, default=int(os.environ.get("CYCPEPFLOW_NUM_SCORE_SHARDS", "1")))
     args = ap.parse_args()
 
     outdir = Path(args.outdir)

@@ -2,6 +2,6 @@
 
 Copyright 2026 CycPepFlow authors.
 
-This product includes source adapted from ET-Flow, “Equivariant Flow-Matching for Molecular Conformer Generation,” copyright 2024 King Abdullah University of Science and Technology (KAUST). That upstream material is distributed under the MIT License; see `LICENSES/ET-Flow-MIT.txt`.
+This product includes source adapted from ET-Flow, “Equivariant Flow-Matching for Molecular Conformer Generation,” copyright 2024 Majdi Hassan, Nikhil Shenoy, and Jungyoon Lee. That upstream material is distributed under the MIT License; see `LICENSES/ET-Flow-MIT.txt`.
 
 The CycPepFlow additions and modifications are distributed under the Apache License 2.0; see `LICENSE`.

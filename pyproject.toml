@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cycpepflow"
-version = "0.1.0"
+version = "0.1.1"
 description = "CycPepFlow inference and benchmark reproduction package"
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
@@ -39,10 +39,11 @@ dependencies = [
 
 [tool.setuptools]
 include-package-data = true
+license-files = ["LICENSE", "NOTICE", "LICENSES/*.txt"]
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["etflow", "etflow.*"]
+include = ["cycpepflow", "cycpepflow.*"]
 
 [tool.ruff]
 line-length = 100

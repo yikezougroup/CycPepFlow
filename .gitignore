@@ -5,11 +5,13 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .venv/
+build/
+dist/
 
 # Generated benchmark artifacts
-data/
-generated/
-metrics/
+/data/
+/generated/
+/metrics/
 *.pkl
 *.pt
 *.sdf
@@ -21,6 +23,6 @@ checkpoints/*.ckpt
 !checkpoints/checkpoint_manifest.json
 
 # Local logs and scheduler outputs
-logs/
+/logs/
 *.out
 *.err
